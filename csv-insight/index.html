@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CSV 数据洞察看板</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+SC:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">📊</span>
+      <div>
+        <h1>CSV 数据洞察看板</h1>
+        <p>拖入一个 CSV，自动识别字段类型、生成统计摘要与图表 · 数据只在本地浏览器处理</p>
+      </div>
+    </div>
+    <div class="actions">
+      <button id="btn-sample" class="ghost">加载示例数据</button>
+      <label class="primary">
+        上传 CSV
+        <input id="file-input" type="file" accept=".csv,text/csv" hidden>
+      </label>
+    </div>
+  </header>
+
+  <main>
+    <section id="dropzone" class="dropzone">
+      <div class="dz-inner">
+        <div class="dz-icon">⇪</div>
+        <p style="font-size:16px;margin:6px 0"><strong>拖入 CSV，三秒生成数据报告</strong></p>
+        <p class="muted">把文件拖到这里，或点击右上角「上传 CSV」/「加载示例数据」</p>
+      </div>
+    </section>
+
+    <section id="dashboard" hidden>
+      <div class="kpis" id="kpis"></div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>字段概览</h2>
+          <input id="filter-input" class="search" placeholder="筛选行：如  region = 华东  或  revenue > 5000">
+        </div>
+        <div class="table-wrap"><table id="schema-table"></table></div>
+      </div>
+
+      <div class="grid">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>数值分布</h2>
+            <select id="hist-col"></select>
+          </div>
+          <div class="chart" id="chart-hist"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h2>类别 Top 10</h2>
+            <select id="cat-col"></select>
+          </div>
+          <div class="chart" id="chart-cat"></div>
+        </div>
+        <div class="panel wide">
+          <div class="panel-head">
+            <h2>时间趋势</h2>
+            <div class="inline">
+              <select id="trend-date"></select>
+              <select id="trend-val"></select>
+              <select id="trend-agg">
+                <option value="sum">求和</option>
+                <option value="mean">均值</option>
+                <option value="count">计数</option>
+              </select>
+            </div>
+          </div>
+          <div class="chart" id="chart-trend"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h2>相关性热力图</h2>
+          </div>
+          <div class="chart" id="chart-corr"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h2>散点图</h2>
+            <div class="inline">
+              <select id="sc-x"></select>
+              <select id="sc-y"></select>
+            </div>
+          </div>
+          <div class="chart" id="chart-scatter"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>分组聚合</h2>
+          <div class="inline">
+            <select id="gb-key"></select>
+            <select id="gb-val"></select>
+            <select id="gb-agg">
+              <option value="sum">求和</option>
+              <option value="mean">均值</option>
+              <option value="count">计数</option>
+              <option value="max">最大值</option>
+              <option value="min">最小值</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="table-wrap"><table id="gb-table"></table></div>
+          <div class="chart" id="chart-gb"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>数据预览 <span class="muted" id="preview-note"></span></h2>
+          <button id="btn-export" class="ghost">导出当前筛选结果 CSV</button>
+        </div>
+        <div class="table-wrap"><table id="preview-table"></table></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>纯前端实现 · PapaParse + ECharts · 每张图右上角可导出 PNG</footer>
+  <script src="app.js"></script>
+</body>
+</html>

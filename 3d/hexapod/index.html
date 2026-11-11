@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>六轴外固定架演示</title>
+<style>
+  :root { --bg:#f6f7f9; --panel:#ffffff; --text:#1d2330; --muted:#667085; --line:#e4e7ec; --accent:#2f6fed; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; }
+  .wrap { display:flex; height:100vh; }
+  .panel { width:360px; flex:none; overflow:auto; background:var(--panel); border-right:1px solid var(--line); padding:16px; }
+  #view { flex:1; position:relative; min-height:360px; }
+  h1 { font-size:18px; margin:0 0 4px; }
+  .sub { color:var(--muted); font-size:12px; margin-bottom:12px; }
+  fieldset { border:1px solid var(--line); border-radius:8px; margin:0 0 12px; padding:8px 12px 12px; }
+  legend { font-weight:600; padding:0 4px; }
+  label { display:flex; justify-content:space-between; align-items:center; gap:8px; margin:6px 0; }
+  input[type=number] { width:80px; padding:4px 6px; border:1px solid var(--line); border-radius:6px; font:inherit; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:6px; padding:8px 14px; font:inherit; cursor:pointer; }
+  button.ghost { background:#eef2fb; color:var(--accent); }
+  .row { display:flex; gap:8px; align-items:center; margin:8px 0; }
+  input[type=range] { flex:1; }
+  .info { background:#f2f4f7; border-radius:8px; padding:8px 10px; font-size:13px; margin:8px 0; }
+  table { border-collapse:collapse; width:100%; font-size:12px; font-variant-numeric:tabular-nums; }
+  th, td { border-bottom:1px solid var(--line); padding:3px 4px; text-align:right; }
+  th:first-child, td:first-child { text-align:left; }
+  tr.cur td { background:#fff4d6; }
+  .tablebox { max-height:260px; overflow:auto; border:1px solid var(--line); border-radius:8px; }
+  .note { color:var(--muted); font-size:12px; margin-top:12px; }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:3px; vertical-align:middle; }
+  #hud { position:absolute; left:12px; top:12px; background:rgba(255,255,255,.88); border-radius:8px; padding:6px 10px; font-size:13px; pointer-events:none; }
+  @media (max-width: 800px) {
+    .wrap { flex-direction:column; height:auto; }
+    .panel { width:100%; border-right:0; border-bottom:1px solid var(--line); }
+    #view { height:60vh; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div class="wrap">
+  <div class="panel">
+    <h1>六轴外固定架 · 矫正处方演示</h1>
+    <div class="sub">输入骨骼畸形 → 计算每天 6 根杆的长度 → 3D 演示复位过程</div>
+
+    <fieldset>
+      <legend>畸形参数（远端骨段相对正常位置）</legend>
+      <label>冠状面成角（°，正位片）<input id="rz" type="number" value="15" step="1"></label>
+      <label>矢状面成角（°，侧位片）<input id="rx" type="number" value="-8" step="1"></label>
+      <label>轴向旋转（°）<input id="ry" type="number" value="10" step="1"></label>
+      <label>侧方移位（mm，正位片）<input id="tx" type="number" value="6" step="1"></label>
+      <label>前后移位（mm，侧位片）<input id="tz" type="number" value="-4" step="1"></label>
+      <label>短缩（mm）<input id="sh" type="number" value="10" step="1"></label>
+    </fieldset>
+
+    <fieldset>
+      <legend>矫正设置</legend>
+      <label>每天最大移动（mm/天）<input id="rate" type="number" value="1" step="0.25" min="0.25"></label>
+      <button id="calc">生成处方</button>
+    </fieldset>
+
+    <div class="info" id="summary"></div>
+
+    <div class="row">
+      <button class="ghost" id="play">▶ 播放</button>
+      <input type="range" id="day" min="0" max="10" value="0" step="1">
+      <span id="dayLabel">第 0 天</span>
+    </div>
+
+    <div class="tablebox"><table id="rx-table"></table></div>
+
+    <div class="note">
+      原理：6 根杆两端分别装在上环（固定）和下环（随远端骨段运动）上。
+      每天把远端骨段的位姿从"畸形"向"正常"插值一小步，杆长 = |R·b + t − a|（并联机构逆运动学）。<br>
+      ⚠ 仅为编程学习演示，参数约定已简化，不可用于临床。
+    </div>
+  </div>
+  <div id="view"><div id="hud"></div></div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ---------- 几何参数(单位 mm) ----------
+const R = 80;          // 环半径
+const H = 160;         // 上下环间距
+const PIVOT = new THREE.Vector3(0, H / 2, 0);   // 截骨处(旋转中心)
+const COLORS = [0xe5484d, 0xf76b15, 0xffc53d, 0x30a46c, 0x0090ff, 0x8e4ec6];
+const deg = Math.PI / 180;
+
+// 6 根杆的安装点:上环 a_i(固定),下环 b_i(在下环自身坐标系里)
+const A = [], B = [];
+for (let j = 0; j < 6; j++) {
+  const k = Math.floor(j / 2);
+  const bAng = (j % 2 === 0 ? 120 * k + 12 : 120 * k + 108) * deg;
+  const aAng = (j % 2 === 0 ? 120 * k + 48 : 120 * k + 72) * deg;
+  B.push(new THREE.Vector3(R * Math.cos(bAng), 0, R * Math.sin(bAng)));
+  A.push(new THREE.Vector3(R * Math.cos(aAng), H, R * Math.sin(aAng)));
+}
+
+// ---------- 位姿与运动学 ----------
+// 位姿 = 绕截骨点旋转 q,再平移 t:  x' = q(x - c) + c + t
+function poseAt(def, s) {
+  const qDef = new THREE.Quaternion().setFromEuler(new THREE.Euler(def.rx * deg, def.ry * deg, def.rz * deg, 'XYZ'));
+  const q = qDef.clone().slerp(new THREE.Quaternion(), s);  // s=0 畸形, s=1 正常
+  const t = def.t.clone().multiplyScalar(1 - s);
+  return { q, t };
+}
+function apply(pose, p) {
+  return p.clone().sub(PIVOT).applyQuaternion(pose.q).add(PIVOT).add(pose.t);
+}
+function strutLengths(pose) {
+  return B.map((b, i) => apply(pose, b).distanceTo(A[i]));
+}
+
+// 按"截骨面上的点每天最多移动 rate mm"决定需要几天
+function daysNeeded(def, rate) {
+  const r = 12;
+  const pts = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(r, 0, 0), new THREE.Vector3(-r, 0, 0),
+               new THREE.Vector3(0, 0, r), new THREE.Vector3(0, 0, -r)].map(p => p.add(PIVOT));
+  const steps = 400; let maxPath = 0;
+  for (const p of pts) {
+    let path = 0, prev = apply(poseAt(def, 0), p);
+    for (let i = 1; i <= steps; i++) {
+      const cur = apply(poseAt(def, i / steps), p);
+      path += cur.distanceTo(prev); prev = cur;
+    }
+    maxPath = Math.max(maxPath, path);
+  }
+  return { days: Math.max(1, Math.ceil(maxPath / rate)), maxPath };
+}
+
+// ---------- 3D 场景 ----------
+const view = document.getElementById('view');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+view.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf6f7f9);
+const camera = new THREE.PerspectiveCamera(45, 1, 1, 5000);
+camera.position.set(320, 220, 380);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, H / 2, 0);
+controls.update();
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 1.2));
+const sun = new THREE.DirectionalLight(0xffffff, 1.2); sun.position.set(200, 400, 300); scene.add(sun);
+const grid = new THREE.GridHelper(500, 20, 0xc8ccd4, 0xe1e4ea); grid.position.y = -110; scene.add(grid);
+
+const ringMat = new THREE.MeshStandardMaterial({ color: 0x8a94a6, metalness: 0.6, roughness: 0.35 });
+const boneMat = new THREE.MeshStandardMaterial({ color: 0xeadfc8, roughness: 0.8 });
+const wireMat = new THREE.MeshStandardMaterial({ color: 0x9aa3b2, metalness: 0.5, roughness: 0.4 });
+
+function makeRing(y) {
+  const g = new THREE.Group();
+  const torus = new THREE.Mesh(new THREE.TorusGeometry(R, 4, 16, 96), ringMat);
+  torus.rotation.x = Math.PI / 2; torus.position.y = y; g.add(torus);
+  for (const rot of [0, Math.PI / 2]) {           // 两根穿骨钢针
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 2 * R, 8), wireMat);
+    w.rotation.z = Math.PI / 2; w.rotation.y = rot; w.position.y = y; g.add(w);
+  }
+  return g;
+}
+// 近端:上环 + 上段骨(固定)
+scene.add(makeRing(H));
+const boneTop = new THREE.Mesh(new THREE.CylinderGeometry(12, 13, 180, 32), boneMat);
+boneTop.position.y = H / 2 + 90; scene.add(boneTop);
+// 远端:下环 + 下段骨(整体随位姿运动)
+const distal = new THREE.Group();
+distal.add(makeRing(0));
+const boneBot = new THREE.Mesh(new THREE.CylinderGeometry(13, 12, 180, 32), boneMat);
+boneBot.position.y = H / 2 - 90; distal.add(boneBot);
+scene.add(distal);
+// 6 根杆
+const struts = COLORS.map(c => {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 1, 12), new THREE.MeshStandardMaterial({ color: c, roughness: 0.4 }));
+  scene.add(m); return m;
+});
+const UP = new THREE.Vector3(0, 1, 0);
+
+function showPose(pose) {
+  distal.quaternion.copy(pose.q);
+  // 让 group 实现 x' = q(x-c)+c+t  ⇒  position = c + t - q·c
+  distal.position.copy(PIVOT).add(pose.t).sub(PIVOT.clone().applyQuaternion(pose.q));
+  B.forEach((b, i) => {
+    const p1 = A[i], p2 = apply(pose, b);
+    const dir = p2.clone().sub(p1), len = dir.length();
+    struts[i].scale.set(1, len, 1);
+    struts[i].position.copy(p1).add(p2).multiplyScalar(0.5);
+    struts[i].quaternion.setFromUnitVectors(UP, dir.normalize());
+  });
+}
+
+function resize() {
+  const w = view.clientWidth, h = view.clientHeight;
+  renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+
+// ---------- 界面 ----------
+const $ = id => document.getElementById(id);
+let def, N = 10, plan = [];
+
+function readDef() {
+  const v = id => parseFloat($(id).value) || 0;
+  // 短缩 = 远端骨段向上挤(y 正方向)
+  return { rx: v('rx'), ry: v('ry'), rz: v('rz'), t: new THREE.Vector3(v('tx'), v('sh'), v('tz')) };
+}
+
+function calc() {
+  def = readDef();
+  const rate = Math.max(0.1, parseFloat($('rate').value) || 1);
+  const { days, maxPath } = daysNeeded(def, rate);
+  N = days;
+  plan = [];
+  for (let d = 0; d <= N; d++) plan.push(strutLengths(poseAt(def, d / N)));
+  $('day').max = N; $('day').value = 0;
+  $('summary').innerHTML = `截骨面最远点总移动 <b>${maxPath.toFixed(1)} mm</b>，按 ${rate} mm/天 需 <b>${N} 天</b>完成矫正。`;
+  const head = '<tr><th>天</th>' + COLORS.map((c, i) =>
+    `<th><span class="dot" style="background:#${c.toString(16).padStart(6, '0')}"></span>杆${i + 1}</th>`).join('') + '</tr>';
+  const body = plan.map((L, d) => `<tr data-d="${d}"><td>${d}</td>` + L.map(x => `<td>${x.toFixed(1)}</td>`).join('') + '</tr>').join('');
+  $('rx-table').innerHTML = head + body;
+  setDay(0);
+}
+
+function setDay(d) {
+  d = Math.max(0, Math.min(N, d));
+  $('day').value = d;
+  $('dayLabel').textContent = `第 ${d} 天`;
+  showPose(poseAt(def, d / N));
+  document.querySelectorAll('#rx-table tr.cur').forEach(r => r.classList.remove('cur'));
+  const row = document.querySelector(`#rx-table tr[data-d="${d}"]`);
+  if (row) { row.classList.add('cur'); row.scrollIntoView({ block: 'nearest' }); }
+  const L = plan[d];
+  $('hud').textContent = d === N ? `第 ${d} 天：已复位` : `第 ${d} / ${N} 天`;
+}
+
+let timer = null;
+$('play').onclick = () => {
+  if (timer) { clearInterval(timer); timer = null; $('play').textContent = '▶ 播放'; return; }
+  if (+$('day').value >= N) setDay(0);
+  $('play').textContent = '⏸ 暂停';
+  timer = setInterval(() => {
+    const d = +$('day').value + 1;
+    setDay(d);
+    if (d >= N) { clearInterval(timer); timer = null; $('play').textContent = '▶ 播放'; }
+  }, Math.max(60, 3000 / N));
+};
+$('day').oninput = e => setDay(+e.target.value);
+$('calc').onclick = calc;
+calc();
+</script>
+</body>
+</html>
