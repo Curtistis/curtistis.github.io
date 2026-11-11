@@ -3,37 +3,84 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>六轴外固定架演示</title>
+<title>六轴外固定架 3D</title>
 <style>
-  :root { --bg:#f6f7f9; --panel:#ffffff; --text:#1d2330; --muted:#667085; --line:#e4e7ec; --accent:#2f6fed; }
-  * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; }
-  .wrap { display:flex; height:100vh; }
-  .panel { width:360px; flex:none; overflow:auto; background:var(--panel); border-right:1px solid var(--line); padding:16px; }
-  #view { flex:1; position:relative; min-height:360px; }
-  h1 { font-size:18px; margin:0 0 4px; }
-  .sub { color:var(--muted); font-size:12px; margin-bottom:12px; }
-  fieldset { border:1px solid var(--line); border-radius:8px; margin:0 0 12px; padding:8px 12px 12px; }
-  legend { font-weight:600; padding:0 4px; }
-  label { display:flex; justify-content:space-between; align-items:center; gap:8px; margin:6px 0; }
-  input[type=number] { width:80px; padding:4px 6px; border:1px solid var(--line); border-radius:6px; font:inherit; }
-  button { background:var(--accent); color:#fff; border:0; border-radius:6px; padding:8px 14px; font:inherit; cursor:pointer; }
-  button.ghost { background:#eef2fb; color:var(--accent); }
-  .row { display:flex; gap:8px; align-items:center; margin:8px 0; }
-  input[type=range] { flex:1; }
-  .info { background:#f2f4f7; border-radius:8px; padding:8px 10px; font-size:13px; margin:8px 0; }
-  table { border-collapse:collapse; width:100%; font-size:12px; font-variant-numeric:tabular-nums; }
-  th, td { border-bottom:1px solid var(--line); padding:3px 4px; text-align:right; }
+  :root {
+    --bg0:#0b0f17; --bg1:#141b28; --panel:rgba(18,24,36,.78); --line:rgba(255,255,255,.08);
+    --text:#e8ecf3; --muted:#8b95a7; --accent:#4c9dff; --warn:#ff6b5e; --ok:#3ccf8e;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; background:var(--bg0); color:var(--text);
+    font:13px/1.5 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; }
+  #stage { position:relative; width:100%; height:100vh; overflow:hidden;
+    background:radial-gradient(ellipse at 50% 35%, #1c2638 0%, var(--bg1) 45%, var(--bg0) 100%); }
+  #view { position:absolute; inset:0; }
+  #view canvas { display:block; }
+  .label-layer { position:absolute; inset:0; pointer-events:none; }
+
+  header { position:absolute; left:20px; top:14px; right:20px; display:flex; align-items:center; gap:12px; pointer-events:none; }
+  header h1 { margin:0; font-size:19px; font-weight:700; letter-spacing:.01em; }
+  header h1 span { color:var(--accent); }
+  .tag { border:1px solid var(--line); border-radius:999px; padding:1px 9px; font-size:11px; color:var(--muted); }
+  .hint { position:absolute; left:20px; top:42px; color:var(--muted); font-size:12px; pointer-events:none; }
+
+  .panel { position:absolute; background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); padding:14px 16px; }
+  #left { left:20px; top:76px; width:290px; max-height:calc(100vh - 170px); overflow:auto; }
+  #right { right:20px; top:76px; width:330px; max-height:calc(100vh - 170px); overflow:auto; }
+  #timeline { left:50%; transform:translateX(-50%); bottom:22px; width:min(620px, calc(100% - 40px));
+    display:flex; align-items:center; gap:12px; padding:10px 14px; }
+
+  .sec { font-size:11px; color:var(--muted); letter-spacing:.08em; margin:12px 0 4px; padding-bottom:4px; border-bottom:1px solid var(--line); }
+  .sec:first-child { margin-top:0; }
+  .ctl { margin:8px 0 2px; }
+  .ctl .top { display:flex; justify-content:space-between; }
+  .ctl .val { color:var(--accent); font-variant-numeric:tabular-nums; font-weight:600; }
+  input[type=range] { width:100%; accent-color:var(--accent); margin:4px 0 0; }
+  .check { display:flex; align-items:center; gap:8px; margin:10px 0 0; color:var(--muted); cursor:pointer; }
+
+  button { font:inherit; border:0; border-radius:8px; cursor:pointer; }
+  .btn { background:var(--accent); color:#fff; padding:8px 14px; font-weight:600; white-space:nowrap; }
+  .btn.ghost { background:rgba(76,157,255,.12); color:var(--accent); }
+  .btn:hover { filter:brightness(1.1); }
+
+  .rhead { display:flex; align-items:center; gap:8px; margin-bottom:2px; }
+  .rhead b { font-size:14px; }
+  .badge { font-size:11px; padding:1px 8px; border-radius:999px; }
+  .badge.run { background:rgba(255,184,77,.15); color:#ffb84d; }
+  .badge.done { background:rgba(60,207,142,.15); color:var(--ok); }
+  .rsub { color:var(--muted); font-size:11px; margin-bottom:8px; }
+  table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+  th { color:var(--muted); font-weight:500; font-size:11px; text-align:right; padding:4px 2px; border-bottom:1px solid var(--line); }
+  td { text-align:right; padding:5px 2px; border-bottom:1px solid var(--line); }
   th:first-child, td:first-child { text-align:left; }
-  tr.cur td { background:#fff4d6; }
-  .tablebox { max-height:260px; overflow:auto; border:1px solid var(--line); border-radius:8px; }
-  .note { color:var(--muted); font-size:12px; margin-top:12px; }
-  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:3px; vertical-align:middle; }
-  #hud { position:absolute; left:12px; top:12px; background:rgba(255,255,255,.88); border-radius:8px; padding:6px 10px; font-size:13px; pointer-events:none; }
-  @media (max-width: 800px) {
-    .wrap { flex-direction:column; height:auto; }
-    .panel { width:100%; border-right:0; border-bottom:1px solid var(--line); }
-    #view { height:60vh; }
+  td.warn { color:var(--warn); font-weight:600; }
+  .chip { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%;
+    font-size:11px; font-weight:700; color:#111; margin-right:6px; }
+  .pos { color:#ffb84d; } .neg { color:#7cc4ff; }
+  canvas#chart { width:100%; height:120px; display:block; margin-top:10px; }
+  .stats { display:grid; grid-template-columns:1fr 1fr; gap:6px 12px; margin-top:10px; }
+  .stats div { background:rgba(255,255,255,.03); border-radius:8px; padding:6px 8px; }
+  .stats small { display:block; color:var(--muted); font-size:11px; }
+  .stats b { font-size:15px; font-variant-numeric:tabular-nums; }
+  .alert { margin-top:8px; color:var(--warn); font-size:12px; }
+  .row { display:flex; gap:8px; margin-top:10px; }
+
+  #timeline .day { min-width:92px; font-variant-numeric:tabular-nums; color:var(--muted); }
+  #timeline .day b { color:var(--text); }
+  #timeline input { flex:1; margin:0; }
+  select { background:rgba(255,255,255,.06); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:4px 6px; font:inherit; }
+
+  .slabel { width:20px; height:20px; border-radius:50%; font:700 11px/20px sans-serif; text-align:center; color:#111;
+    box-shadow:0 0 0 2px rgba(0,0,0,.35); transform:translate(16px,-4px); }
+  footer { position:absolute; bottom:4px; left:0; right:0; text-align:center; color:#5d6676; font-size:11px; pointer-events:none; }
+
+  @media (max-width: 900px) {
+    #stage { height:auto; min-height:100vh; display:flex; flex-direction:column; overflow:visible; }
+    #view { position:relative; height:62vh; flex:none; }
+    .hint { display:none; }
+    .panel { position:static; width:auto !important; max-height:none; margin:10px 16px 0; transform:none; }
+    footer { position:static; padding:12px 16px 20px; }
   }
 </style>
 <script type="importmap">
@@ -44,220 +91,370 @@
 </script>
 </head>
 <body>
-<div class="wrap">
-  <div class="panel">
-    <h1>六轴外固定架 · 矫正处方演示</h1>
-    <div class="sub">输入骨骼畸形 → 计算每天 6 根杆的长度 → 3D 演示复位过程</div>
+<div id="stage">
+  <div id="view"></div>
+  <header><h1>Hexa<span>Frame</span> 3D</h1><span class="tag">六柱逆运动学</span><span class="tag">实时处方</span><span class="tag">复位动画</span></header>
+  <div class="hint">拖拽旋转 · 滚轮缩放 · 右键平移</div>
 
-    <fieldset>
-      <legend>畸形参数（远端骨段相对正常位置）</legend>
-      <label>冠状面成角（°，正位片）<input id="rz" type="number" value="15" step="1"></label>
-      <label>矢状面成角（°，侧位片）<input id="rx" type="number" value="-8" step="1"></label>
-      <label>轴向旋转（°）<input id="ry" type="number" value="10" step="1"></label>
-      <label>侧方移位（mm，正位片）<input id="tx" type="number" value="6" step="1"></label>
-      <label>前后移位（mm，侧位片）<input id="tz" type="number" value="-4" step="1"></label>
-      <label>短缩（mm）<input id="sh" type="number" value="10" step="1"></label>
-    </fieldset>
+  <div id="left" class="panel"></div>
 
-    <fieldset>
-      <legend>矫正设置</legend>
-      <label>每天最大移动（mm/天）<input id="rate" type="number" value="1" step="0.25" min="0.25"></label>
-      <button id="calc">生成处方</button>
-    </fieldset>
-
-    <div class="info" id="summary"></div>
-
-    <div class="row">
-      <button class="ghost" id="play">▶ 播放</button>
-      <input type="range" id="day" min="0" max="10" value="0" step="1">
-      <span id="dayLabel">第 0 天</span>
+  <div id="right" class="panel">
+    <div class="rhead"><b>调整处方</b><span class="badge run" id="badge">畸形位</span></div>
+    <div class="rsub">6 根伸缩杆长度（mm），患者每天按此调节彩色螺母</div>
+    <table id="tbl"></table>
+    <canvas id="chart"></canvas>
+    <div class="stats">
+      <div><small>矫正周期</small><b id="sDays">–</b></div>
+      <div><small>单杆最大日调整</small><b id="sMaxStep">–</b></div>
+      <div><small>截骨面最大位移</small><b id="sPath">–</b></div>
+      <div><small>杆长范围 (mm)</small><b id="sRange">–</b></div>
     </div>
-
-    <div class="tablebox"><table id="rx-table"></table></div>
-
-    <div class="note">
-      原理：6 根杆两端分别装在上环（固定）和下环（随远端骨段运动）上。
-      每天把远端骨段的位姿从"畸形"向"正常"插值一小步，杆长 = |R·b + t − a|（并联机构逆运动学）。<br>
-      ⚠ 仅为编程学习演示，参数约定已简化，不可用于临床。
-    </div>
+    <div class="alert" id="alert"></div>
+    <div class="row"><button class="btn ghost" id="csv">导出处方 CSV</button></div>
   </div>
-  <div id="view"><div id="hud"></div></div>
+
+  <div id="timeline" class="panel">
+    <button class="btn" id="play">▶ 复位演示</button>
+    <input type="range" id="t" min="0" max="10" step="0.01" value="0">
+    <div class="day" id="dayText">第 <b>0</b> / 0 天</div>
+    <select id="speed" title="播放速度"><option value="4">慢</option><option value="8" selected>中</option><option value="16">快</option></select>
+  </div>
+
+  <footer>编程学习演示：参数约定已简化，不构成任何医疗或临床计算依据 · Three.js / WebGL</footer>
 </div>
 
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
-// ---------- 几何参数(单位 mm) ----------
-const R = 80;          // 环半径
-const H = 160;         // 上下环间距
-const PIVOT = new THREE.Vector3(0, H / 2, 0);   // 截骨处(旋转中心)
-const COLORS = [0xe5484d, 0xf76b15, 0xffc53d, 0x30a46c, 0x0090ff, 0x8e4ec6];
+// ================= 几何常量（mm） =================
+const R_OUT = 92, R_IN = 72, R_HOLE = 82;     // 环板外径 / 内径 / 安装孔所在圆
+const H = 170;                                 // 上下环间距
+const PIVOT = new THREE.Vector3(0, H / 2, 0);  // 截骨点 = 旋转中心
+const L_MIN = 115, L_MAX = 225;                // 伸缩杆行程
+const COLORS = ['#ff5a5f', '#ff9f43', '#ffd84d', '#3ccf8e', '#4c9dff', '#a26bff'];
 const deg = Math.PI / 180;
 
-// 6 根杆的安装点:上环 a_i(固定),下环 b_i(在下环自身坐标系里)
+// 安装点：上环 a_i 固定；下环 b_i 在下环局部坐标（都是 12° 的整数倍，正好对上环板上的孔）
 const A = [], B = [];
 for (let j = 0; j < 6; j++) {
   const k = Math.floor(j / 2);
-  const bAng = (j % 2 === 0 ? 120 * k + 12 : 120 * k + 108) * deg;
-  const aAng = (j % 2 === 0 ? 120 * k + 48 : 120 * k + 72) * deg;
-  B.push(new THREE.Vector3(R * Math.cos(bAng), 0, R * Math.sin(bAng)));
-  A.push(new THREE.Vector3(R * Math.cos(aAng), H, R * Math.sin(aAng)));
+  const bA = (j % 2 === 0 ? 120 * k + 12 : 120 * k + 108) * deg;
+  const aA = (j % 2 === 0 ? 120 * k + 48 : 120 * k + 72) * deg;
+  A.push(new THREE.Vector3(R_HOLE * Math.cos(aA), H - 7, -R_HOLE * Math.sin(aA)));
+  B.push(new THREE.Vector3(R_HOLE * Math.cos(bA), 7, -R_HOLE * Math.sin(bA)));
 }
 
-// ---------- 位姿与运动学 ----------
-// 位姿 = 绕截骨点旋转 q,再平移 t:  x' = q(x - c) + c + t
-function poseAt(def, s) {
-  const qDef = new THREE.Quaternion().setFromEuler(new THREE.Euler(def.rx * deg, def.ry * deg, def.rz * deg, 'XYZ'));
-  const q = qDef.clone().slerp(new THREE.Quaternion(), s);  // s=0 畸形, s=1 正常
-  const t = def.t.clone().multiplyScalar(1 - s);
-  return { q, t };
+// ================= 运动学 =================
+function poseAt(d, s) {            // s=0 畸形位，s=1 复位
+  const q0 = new THREE.Quaternion().setFromEuler(new THREE.Euler(d.rx * deg, d.ry * deg, d.rz * deg, 'XYZ'));
+  return { q: q0.slerp(new THREE.Quaternion(), s), t: new THREE.Vector3(d.tx, d.ty, d.tz).multiplyScalar(1 - s) };
 }
-function apply(pose, p) {
-  return p.clone().sub(PIVOT).applyQuaternion(pose.q).add(PIVOT).add(pose.t);
-}
-function strutLengths(pose) {
-  return B.map((b, i) => apply(pose, b).distanceTo(A[i]));
-}
+const apply = (p, v) => v.clone().sub(PIVOT).applyQuaternion(p.q).add(PIVOT).add(p.t);
+const lengths = p => B.map((b, i) => apply(p, b).distanceTo(A[i]));
 
-// 按"截骨面上的点每天最多移动 rate mm"决定需要几天
-function daysNeeded(def, rate) {
-  const r = 12;
-  const pts = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(r, 0, 0), new THREE.Vector3(-r, 0, 0),
-               new THREE.Vector3(0, 0, r), new THREE.Vector3(0, 0, -r)].map(p => p.add(PIVOT));
-  const steps = 400; let maxPath = 0;
+function planFor(d, rate) {
+  // 截骨面边缘 8 个点里轨迹最长的那个，决定需要几天（每天不超过 rate mm）
+  const pts = [];
+  for (let k = 0; k < 8; k++) pts.push(new THREE.Vector3(13 * Math.cos(k * Math.PI / 4), 0, 13 * Math.sin(k * Math.PI / 4)).add(PIVOT));
+  const steps = 300; let maxPath = 0;
   for (const p of pts) {
-    let path = 0, prev = apply(poseAt(def, 0), p);
-    for (let i = 1; i <= steps; i++) {
-      const cur = apply(poseAt(def, i / steps), p);
-      path += cur.distanceTo(prev); prev = cur;
-    }
-    maxPath = Math.max(maxPath, path);
+    let acc = 0, prev = apply(poseAt(d, 0), p);
+    for (let i = 1; i <= steps; i++) { const c = apply(poseAt(d, i / steps), p); acc += c.distanceTo(prev); prev = c; }
+    maxPath = Math.max(maxPath, acc);
   }
-  return { days: Math.max(1, Math.ceil(maxPath / rate)), maxPath };
+  const N = Math.max(1, Math.ceil(maxPath / rate - 1e-9));
+  const rows = [];
+  for (let k = 0; k <= N; k++) rows.push(lengths(poseAt(d, k / N)));
+  return { N, rows, maxPath };
 }
 
-// ---------- 3D 场景 ----------
+// ================= 渲染器与场景 =================
 const view = document.getElementById('view');
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(window.devicePixelRatio);
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 view.appendChild(renderer.domElement);
+const labels = new CSS2DRenderer();
+labels.domElement.className = 'label-layer';
+view.appendChild(labels.domElement);
+
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xf6f7f9);
-const camera = new THREE.PerspectiveCamera(45, 1, 1, 5000);
-camera.position.set(320, 220, 380);
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+scene.fog = new THREE.Fog(0x0b0f17, 900, 1800);
+
+const camera = new THREE.PerspectiveCamera(36, 1, 1, 5000);
+camera.position.set(560, 330, 720);
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(0, H / 2, 0);
-controls.update();
+controls.target.set(0, 85, 0);
+controls.enableDamping = true;
+controls.minDistance = 200; controls.maxDistance = 1400;
 
-scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 1.2));
-const sun = new THREE.DirectionalLight(0xffffff, 1.2); sun.position.set(200, 400, 300); scene.add(sun);
-const grid = new THREE.GridHelper(500, 20, 0xc8ccd4, 0xe1e4ea); grid.position.y = -110; scene.add(grid);
+const key = new THREE.DirectionalLight(0xffffff, 2.2);
+key.position.set(300, 600, 260);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+Object.assign(key.shadow.camera, { left: -260, right: 260, top: 260, bottom: -260, near: 100, far: 1400 });
+key.shadow.bias = -0.0005;
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x7fb4ff, 0.9); rim.position.set(-300, 200, -320); scene.add(rim);
+scene.add(new THREE.HemisphereLight(0xbcd2ff, 0x1a1f2a, 0.35));
 
-const ringMat = new THREE.MeshStandardMaterial({ color: 0x8a94a6, metalness: 0.6, roughness: 0.35 });
-const boneMat = new THREE.MeshStandardMaterial({ color: 0xeadfc8, roughness: 0.8 });
-const wireMat = new THREE.MeshStandardMaterial({ color: 0x9aa3b2, metalness: 0.5, roughness: 0.4 });
+const FLOOR = -170;
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), new THREE.ShadowMaterial({ opacity: 0.35 }));
+floor.rotation.x = -Math.PI / 2; floor.position.y = FLOOR; floor.receiveShadow = true; scene.add(floor);
+const grid = new THREE.GridHelper(1600, 40, 0x2c3a52, 0x1a2333); grid.position.y = FLOOR + 0.2; scene.add(grid);
 
-function makeRing(y) {
+// ================= 材质 =================
+const M = {
+  ring: new THREE.MeshStandardMaterial({ color: 0x2a3446, metalness: 0.85, roughness: 0.32 }),
+  alu: new THREE.MeshStandardMaterial({ color: 0xd5dbe3, metalness: 1.0, roughness: 0.28 }),
+  steel: new THREE.MeshStandardMaterial({ color: 0xf2f4f7, metalness: 1.0, roughness: 0.12 }),
+  dark: new THREE.MeshStandardMaterial({ color: 0x3a4252, metalness: 0.9, roughness: 0.4 }),
+  bone: new THREE.MeshPhysicalMaterial({ color: 0xd8c6a3, roughness: 0.62, clearcoat: 0.2, clearcoatRoughness: 0.6, sheen: 0.4 }),
+  cut: new THREE.MeshStandardMaterial({ color: 0xc58f6a, roughness: 0.9 }),
+  ghost: new THREE.MeshBasicMaterial({ color: 0x4c9dff, transparent: true, opacity: 0.13, depthWrite: false }),
+};
+
+// ================= 部件 =================
+function ringGeometry() {
+  const s = new THREE.Shape(); s.absarc(0, 0, R_OUT, 0, Math.PI * 2, false);
+  const inner = new THREE.Path(); inner.absarc(0, 0, R_IN, 0, Math.PI * 2, true); s.holes.push(inner);
+  for (let k = 0; k < 30; k++) {
+    const a = k * 12 * deg, h = new THREE.Path();
+    h.absarc(R_HOLE * Math.cos(a), R_HOLE * Math.sin(a), 2.7, 0, Math.PI * 2, true); s.holes.push(h);
+  }
+  const g = new THREE.ExtrudeGeometry(s, { depth: 5, bevelEnabled: true, bevelThickness: 0.8, bevelSize: 0.8, bevelSegments: 2, curveSegments: 40 });
+  g.translate(0, 0, -2.5); g.rotateX(-Math.PI / 2);
+  return g;
+}
+const RING_GEO = ringGeometry();
+
+function ringAssembly(y, mounts, wireY) {
   const g = new THREE.Group();
-  const torus = new THREE.Mesh(new THREE.TorusGeometry(R, 4, 16, 96), ringMat);
-  torus.rotation.x = Math.PI / 2; torus.position.y = y; g.add(torus);
-  for (const rot of [0, Math.PI / 2]) {           // 两根穿骨钢针
-    const w = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 2 * R, 8), wireMat);
-    w.rotation.z = Math.PI / 2; w.rotation.y = rot; w.position.y = y; g.add(w);
+  const ring = new THREE.Mesh(RING_GEO, M.ring); ring.position.y = y; g.add(ring);
+  for (const m of mounts) {                      // 杆座
+    const tab = new THREE.Mesh(new THREE.CylinderGeometry(5.5, 5.5, 9, 20), M.dark);
+    tab.position.set(m.x, (m.y + y) / 2, m.z); g.add(tab);
+  }
+  for (const a of [25, -25]) {                   // 两根交叉克氏针 + 两端夹持螺栓
+    const ang = a * deg, dir = new THREE.Vector3(Math.cos(ang), 0, Math.sin(ang));
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 2 * R_HOLE + 6, 10), M.steel);
+    w.position.set(0, wireY, 0); w.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir); g.add(w);
+    for (const sgn of [1, -1]) {
+      const bolt = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 8, 6), M.alu);
+      bolt.position.set(sgn * R_HOLE * dir.x, (wireY + y) / 2, sgn * R_HOLE * dir.z); g.add(bolt);
+    }
   }
   return g;
 }
-// 近端:上环 + 上段骨(固定)
-scene.add(makeRing(H));
-const boneTop = new THREE.Mesh(new THREE.CylinderGeometry(12, 13, 180, 32), boneMat);
-boneTop.position.y = H / 2 + 90; scene.add(boneTop);
-// 远端:下环 + 下段骨(整体随位姿运动)
-const distal = new THREE.Group();
-distal.add(makeRing(0));
-const boneBot = new THREE.Mesh(new THREE.CylinderGeometry(13, 12, 180, 32), boneMat);
-boneBot.position.y = H / 2 - 90; distal.add(boneBot);
-scene.add(distal);
-// 6 根杆
-const struts = COLORS.map(c => {
-  const m = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 1, 12), new THREE.MeshStandardMaterial({ color: c, roughness: 0.4 }));
-  scene.add(m); return m;
-});
-const UP = new THREE.Vector3(0, 1, 0);
 
-function showPose(pose) {
-  distal.quaternion.copy(pose.q);
-  // 让 group 实现 x' = q(x-c)+c+t  ⇒  position = c + t - q·c
-  distal.position.copy(PIVOT).add(pose.t).sub(PIVOT.clone().applyQuaternion(pose.q));
-  B.forEach((b, i) => {
-    const p1 = A[i], p2 = apply(pose, b);
+function boneSegment(profile, cutY, cutUp) {
+  const g = new THREE.Group();
+  const lathe = new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), 64);
+  lathe.scale(1.08, 1, 0.94);                    // 稍微压扁，不是正圆柱
+  g.add(new THREE.Mesh(lathe, M.bone));
+  const cut = new THREE.Mesh(new THREE.CircleGeometry(12.2, 40), M.cut);
+  cut.scale.set(1.08, 0.94, 1);
+  cut.rotation.x = cutUp ? -Math.PI / 2 : Math.PI / 2;
+  cut.position.y = cutY + (cutUp ? 0.15 : -0.15);
+  g.add(cut);
+  return g;
+}
+// 胫骨轮廓 [半径, 高度]：近端平台膨大，远端踝部膨大，中段骨干
+const PROX = [[0, 87], [12.4, 87], [13, 96], [12.6, 150], [12.9, 205], [14.5, 236], [19, 262], [27, 284], [33.5, 300], [35.5, 311], [33, 321], [24, 329], [10, 333], [0, 334]];
+const DIST = [[0, -152], [9, -151], [18, -147], [23.5, -138], [24.5, -126], [20.5, -110], [15.5, -92], [13.2, -66], [12.6, 0], [12.9, 60], [13, 76], [12.4, 83], [0, 83]];
+
+// 近端（固定不动）
+scene.add(ringAssembly(H, A, H + 6));
+scene.add(boneSegment(PROX, 87, false));
+// 远端（随位姿运动）
+const distal = new THREE.Group();
+distal.add(ringAssembly(0, B, -6));
+distal.add(boneSegment(DIST, 83, true));
+scene.add(distal);
+// 复位目标虚影
+const ghostGeo = new THREE.LatheGeometry(DIST.map(([r, y]) => new THREE.Vector2(r + 0.6, y)), 48);
+ghostGeo.scale(1.08, 1, 0.94);
+const ghost = new THREE.Mesh(ghostGeo, M.ghost);
+scene.add(ghost);
+
+// 伸缩杆：两端球铰 + 铝外管 + 钢内杆 + 彩色调节螺母 + 编号
+const UP = new THREE.Vector3(0, 1, 0);
+const unitCyl = r => new THREE.CylinderGeometry(r, r, 1, 24);
+const struts = COLORS.map((c, i) => {
+  const g = new THREE.Group();
+  const j1 = new THREE.Mesh(new THREE.SphereGeometry(5.2, 24, 16), M.steel);
+  const j2 = j1.clone();
+  const tube = new THREE.Mesh(unitCyl(4.6), M.alu);
+  const rod = new THREE.Mesh(unitCyl(2.9), M.steel);
+  const nutMat = new THREE.MeshStandardMaterial({ color: c, metalness: 0.2, roughness: 0.45 });
+  const nut = new THREE.Mesh(new THREE.CylinderGeometry(7, 7, 8, 6), nutMat);
+  g.add(j1, j2, tube, rod, nut);
+  const el = document.createElement('div'); el.className = 'slabel'; el.textContent = i + 1; el.style.background = c;
+  const lab = new CSS2DObject(el); g.add(lab);
+  scene.add(g);
+  return { g, j2, tube, rod, nut, nutMat, lab, color: new THREE.Color(c) };
+});
+const WARN = new THREE.Color('#ff3b30'), BLACK = new THREE.Color(0);
+
+scene.traverse(o => { if (o.isMesh && o !== floor && o !== ghost) { o.castShadow = true; o.receiveShadow = true; } });
+
+function showPose(p, L) {
+  distal.quaternion.copy(p.q);
+  distal.position.copy(PIVOT).add(p.t).sub(PIVOT.clone().applyQuaternion(p.q));
+  struts.forEach((s, i) => {
+    const p1 = A[i], p2 = apply(p, B[i]);
     const dir = p2.clone().sub(p1), len = dir.length();
-    struts[i].scale.set(1, len, 1);
-    struts[i].position.copy(p1).add(p2).multiplyScalar(0.5);
-    struts[i].quaternion.setFromUnitVectors(UP, dir.normalize());
+    s.g.position.copy(p1);
+    s.g.quaternion.setFromUnitVectors(UP, dir.normalize());
+    s.j2.position.y = len;
+    const Lt = Math.min(92, len * 0.55);
+    s.tube.scale.y = Lt; s.tube.position.y = 6 + Lt / 2;
+    s.nut.position.y = 6 + Lt + 4; s.lab.position.y = 6 + Lt + 4;
+    const r0 = 6 + Lt - 22, r1 = len - 6;
+    s.rod.scale.y = r1 - r0; s.rod.position.y = (r0 + r1) / 2;
+    const bad = L[i] < L_MIN || L[i] > L_MAX;
+    s.nutMat.color.copy(bad ? WARN : s.color);
+    s.nutMat.emissive.copy(bad ? WARN : BLACK).multiplyScalar(bad ? 0.4 : 0);
   });
 }
 
-function resize() {
-  const w = view.clientWidth, h = view.clientHeight;
-  renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
-}
-window.addEventListener('resize', resize);
-resize();
-renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+// ================= 界面 =================
+const PARAMS = [
+  { sec: '成角畸形（°）' },
+  { id: 'rz', label: '内翻 / 外翻（正位片）', min: -30, max: 30, step: 1, v: 12, u: '°' },
+  { id: 'rx', label: '前屈 / 后伸（侧位片）', min: -30, max: 30, step: 1, v: -8, u: '°' },
+  { id: 'ry', label: '内旋 / 外旋', min: -30, max: 30, step: 1, v: 10, u: '°' },
+  { sec: '位移畸形（mm）' },
+  { id: 'tx', label: '左右移位（正位片）', min: -20, max: 20, step: 1, v: 6, u: ' mm' },
+  { id: 'tz', label: '前后移位（侧位片）', min: -20, max: 20, step: 1, v: -4, u: ' mm' },
+  { id: 'ty', label: '短缩 / 分离', min: -20, max: 20, step: 1, v: 10, u: ' mm' },
+  { sec: '矫正设置' },
+  { id: 'rate', label: '每日最大位移', min: 0.25, max: 2, step: 0.25, v: 1, u: ' mm/天' },
+];
+const left = document.getElementById('left');
+left.innerHTML = PARAMS.map(p => p.sec ? `<div class="sec">${p.sec}</div>` :
+  `<div class="ctl"><div class="top"><span>${p.label}</span><span class="val" id="${p.id}V"></span></div>
+   <input type="range" id="${p.id}" min="${p.min}" max="${p.max}" step="${p.step}" value="${p.v}"></div>`).join('') +
+  `<label class="check"><input type="checkbox" id="ghostOn" checked> 显示复位目标（蓝色虚影）</label>
+   <div class="row"><button class="btn ghost" id="reset">恢复示例参数</button><button class="btn ghost" id="zero">全部归零</button></div>`;
 
-// ---------- 界面 ----------
 const $ = id => document.getElementById(id);
-let def, N = 10, plan = [];
+let def, plan, t = 0, playing = false;
 
 function readDef() {
-  const v = id => parseFloat($(id).value) || 0;
-  // 短缩 = 远端骨段向上挤(y 正方向)
-  return { rx: v('rx'), ry: v('ry'), rz: v('rz'), t: new THREE.Vector3(v('tx'), v('sh'), v('tz')) };
+  const o = {};
+  for (const p of PARAMS) if (p.id) {
+    o[p.id] = parseFloat($(p.id).value);
+    $(p.id + 'V').textContent = (o[p.id] > 0 && p.id !== 'rate' ? '+' : '') + o[p.id] + p.u;
+  }
+  return o;
 }
 
-function calc() {
+function rebuild() {
   def = readDef();
-  const rate = Math.max(0.1, parseFloat($('rate').value) || 1);
-  const { days, maxPath } = daysNeeded(def, rate);
-  N = days;
-  plan = [];
-  for (let d = 0; d <= N; d++) plan.push(strutLengths(poseAt(def, d / N)));
-  $('day').max = N; $('day').value = 0;
-  $('summary').innerHTML = `截骨面最远点总移动 <b>${maxPath.toFixed(1)} mm</b>，按 ${rate} mm/天 需 <b>${N} 天</b>完成矫正。`;
-  const head = '<tr><th>天</th>' + COLORS.map((c, i) =>
-    `<th><span class="dot" style="background:#${c.toString(16).padStart(6, '0')}"></span>杆${i + 1}</th>`).join('') + '</tr>';
-  const body = plan.map((L, d) => `<tr data-d="${d}"><td>${d}</td>` + L.map(x => `<td>${x.toFixed(1)}</td>`).join('') + '</tr>').join('');
-  $('rx-table').innerHTML = head + body;
-  setDay(0);
+  plan = planFor(def, def.rate);
+  $('t').max = plan.N;
+  t = 0; $('t').value = 0;
+  const all = plan.rows.flat();
+  let maxStep = 0;
+  for (let k = 1; k <= plan.N; k++) for (let i = 0; i < 6; i++) maxStep = Math.max(maxStep, Math.abs(plan.rows[k][i] - plan.rows[k - 1][i]));
+  $('sDays').textContent = `${plan.N} 天`;
+  $('sMaxStep').textContent = `${maxStep.toFixed(2)} mm`;
+  $('sPath').textContent = `${plan.maxPath.toFixed(1)} mm`;
+  $('sRange').textContent = `${Math.min(...all).toFixed(0)}–${Math.max(...all).toFixed(0)}`;
+  const bad = all.some(x => x < L_MIN || x > L_MAX);
+  $('alert').textContent = bad ? `⚠ 部分天数杆长超出行程 ${L_MIN}–${L_MAX} mm，需换杆型号或调整安装（超程杆显示为红色）` : '';
+  render();
 }
 
-function setDay(d) {
-  d = Math.max(0, Math.min(N, d));
-  $('day').value = d;
-  $('dayLabel').textContent = `第 ${d} 天`;
-  showPose(poseAt(def, d / N));
-  document.querySelectorAll('#rx-table tr.cur').forEach(r => r.classList.remove('cur'));
-  const row = document.querySelector(`#rx-table tr[data-d="${d}"]`);
-  if (row) { row.classList.add('cur'); row.scrollIntoView({ block: 'nearest' }); }
-  const L = plan[d];
-  $('hud').textContent = d === N ? `第 ${d} 天：已复位` : `第 ${d} / ${N} 天`;
+function render() {
+  const N = plan.N, s = Math.min(1, t / N), d = Math.min(N, Math.floor(t + 1e-6));
+  const p = poseAt(def, s);
+  showPose(p, lengths(p));
+  ghost.visible = $('ghostOn').checked && s < 0.999;
+  $('dayText').innerHTML = `第 <b>${d}</b> / ${N} 天`;
+  const done = d >= N;
+  $('badge').className = 'badge ' + (done ? 'done' : 'run');
+  $('badge').textContent = done ? '已复位 ✓' : (d === 0 ? '畸形位' : '矫正中');
+  const row = plan.rows[d], prev = plan.rows[Math.max(0, d - 1)], first = plan.rows[0];
+  const fmt = x => `<span class="${x > 0.005 ? 'pos' : x < -0.005 ? 'neg' : ''}">${x > 0.005 ? '+' : ''}${x.toFixed(2)}</span>`;
+  $('tbl').innerHTML = '<tr><th>杆</th><th>当日长度</th><th>今日调整</th><th>累计</th></tr>' +
+    row.map((L, i) => `<tr><td><span class="chip" style="background:${COLORS[i]}">${i + 1}</span>S${i + 1}</td>
+      <td class="${L < L_MIN || L > L_MAX ? 'warn' : ''}">${L.toFixed(1)}</td><td>${d === 0 ? '—' : fmt(L - prev[i])}</td><td>${fmt(L - first[i])}</td></tr>`).join('');
+  drawChart(t);
 }
 
-let timer = null;
+function drawChart(tNow) {
+  const cv = $('chart'), dpr = Math.min(2, window.devicePixelRatio);
+  const w = cv.clientWidth, h = cv.clientHeight;
+  if (!w || !h) return;
+  if (cv.width !== w * dpr) { cv.width = w * dpr; cv.height = h * dpr; }
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  const all = plan.rows.flat(), lo = Math.min(...all) - 2, hi = Math.max(...all) + 2, N = plan.N;
+  const pad = { l: 30, r: 6, t: 6, b: 16 };
+  const X = k => pad.l + (w - pad.l - pad.r) * k / N, Y = v => pad.t + (h - pad.t - pad.b) * (1 - (v - lo) / (hi - lo));
+  g.strokeStyle = 'rgba(255,255,255,.07)'; g.fillStyle = '#6b7588'; g.font = '10px sans-serif'; g.lineWidth = 1;
+  for (let k = 0; k <= 3; k++) { const v = lo + (hi - lo) * k / 3, y = Y(v); g.beginPath(); g.moveTo(pad.l, y); g.lineTo(w - pad.r, y); g.stroke(); g.fillText(v.toFixed(0), 2, y + 3); }
+  g.fillText('第 0 天', pad.l, h - 3); g.textAlign = 'right'; g.fillText(`第 ${N} 天`, w - pad.r, h - 3); g.textAlign = 'left';
+  COLORS.forEach((c, i) => {
+    g.strokeStyle = c; g.lineWidth = 1.6; g.beginPath();
+    plan.rows.forEach((r, k) => k ? g.lineTo(X(k), Y(r[i])) : g.moveTo(X(k), Y(r[i]))); g.stroke();
+  });
+  const xn = X(Math.min(N, tNow));
+  g.strokeStyle = 'rgba(255,255,255,.55)'; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(xn, pad.t); g.lineTo(xn, h - pad.b); g.stroke(); g.setLineDash([]);
+}
+
+// ================= 事件 =================
+PARAMS.forEach(p => p.id && $(p.id).addEventListener('input', () => { stop(); rebuild(); }));
+$('ghostOn').onchange = render;
+$('reset').onclick = () => { PARAMS.forEach(p => p.id && ($(p.id).value = p.v)); stop(); rebuild(); };
+$('zero').onclick = () => { PARAMS.forEach(p => p.id && p.id !== 'rate' && ($(p.id).value = 0)); stop(); rebuild(); };
+$('t').addEventListener('input', e => { stop(); t = parseFloat(e.target.value); render(); });
+function stop() { playing = false; $('play').textContent = '▶ 复位演示'; }
 $('play').onclick = () => {
-  if (timer) { clearInterval(timer); timer = null; $('play').textContent = '▶ 播放'; return; }
-  if (+$('day').value >= N) setDay(0);
-  $('play').textContent = '⏸ 暂停';
-  timer = setInterval(() => {
-    const d = +$('day').value + 1;
-    setDay(d);
-    if (d >= N) { clearInterval(timer); timer = null; $('play').textContent = '▶ 播放'; }
-  }, Math.max(60, 3000 / N));
+  if (playing) return stop();
+  if (t >= plan.N) t = 0;
+  playing = true; $('play').textContent = '⏸ 暂停';
 };
-$('day').oninput = e => setDay(+e.target.value);
-$('calc').onclick = calc;
-calc();
+$('csv').onclick = () => {
+  const lines = ['天,' + COLORS.map((_, i) => `S${i + 1}(mm)`).join(',')]
+    .concat(plan.rows.map((r, k) => k + ',' + r.map(x => x.toFixed(2)).join(',')));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\n')], { type: 'text/csv' }));
+  a.download = 'hexapod_prescription.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+
+function resize() {
+  const w = view.clientWidth, h = view.clientHeight;
+  renderer.setSize(w, h); labels.setSize(w, h);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  if (plan) drawChart(t);
+}
+window.addEventListener('resize', resize);
+
+let last = performance.now();
+renderer.setAnimationLoop(now => {
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  if (playing) {
+    const daysPerSec = Math.max(1, plan.N / (60 / parseFloat($('speed').value)));
+    t = Math.min(plan.N, t + dt * daysPerSec);
+    $('t').value = t; render();
+    if (t >= plan.N) stop();
+  }
+  controls.update();
+  renderer.render(scene, camera);
+  labels.render(scene, camera);
+});
+
+resize();
+rebuild();
 </script>
 </body>
 </html>
